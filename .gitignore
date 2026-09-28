@@ -1,0 +1,54 @@
+# Go
+bin/
+obj/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.cover
+*.prof
+
+# Dependency directories
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Pulumi
+Pulumi.yaml.state
+Pulumi.dev.yaml.state
+Pulumi.dev.yaml
+*.yaml.state
+*.yaml~
+
+# Environment files with secrets
+.env
+.env.*
+!.env.example
+
+# Build output
+/main
+/main.exe
+
+# Local config
+*.local.yaml
+*.local.yml
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
