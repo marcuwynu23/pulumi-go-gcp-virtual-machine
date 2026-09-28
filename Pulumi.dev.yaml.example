@@ -1,0 +1,12 @@
+encryptionsalt: v1:REPLACE_ME:=v1:REPLACE_ME:REPLACE_ME
+config:
+  gcp:project: YOUR_GCP_PROJECT_ID
+  gcp:region: us-central1
+  gcp:zone: us-central1-a
+  vm:instanceName: free-tier-vm
+  vm:machineType: e2-micro
+  vm:sshUser: gcp-user
+  vm:sshPublicKey: YOUR_SSH_PUBLIC_KEY
+  vm:diskSizeGb: "30"
+  vm:diskType: pd-standard
+  vm:firewallRules: '[{"name": "allow-ssh", "direction": "INGRESS", "priority": 1000, "sourceRanges": ["0.0.0.0/0"], "allowed": [{"protocol": "tcp", "ports": ["22"]}]}]'
