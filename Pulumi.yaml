@@ -2,32 +2,27 @@ name: pulumi-go-gcp-virtual-machine
 description: Pulumi GCP Compute Engine VM with VPC, subnet, and firewall
 runtime: go
 config:
-  gcp:project:
-    description: The GCP Project ID
   gcp:region:
     description: The region to deploy to
-    default: us-central1
+    value: us-central1
   gcp:zone:
     description: The zone to deploy to
-    default: us-central1-a
+    value: us-central1-a
   vm:instanceName:
     description: The name of the VM instance
-    default: free-tier-vm
+    value: free-tier-vm
   vm:machineType:
     description: The machine type for the VM
-    default: e2-micro
+    value: e2-micro
   vm:sshUser:
     description: The SSH username to create on the VM
-    default: gcp-user
-  vm:sshPublicKey:
-    description: The SSH public key content
-    secret: true
+    value: gcp-user
   vm:diskSizeGb:
     description: The boot disk size in GB
-    default: "30"
+    value: '30'
   vm:diskType:
     description: The boot disk type
-    default: pd-standard
+    value: pd-standard
   vm:firewallRules:
     description: JSON list of firewall rules to create
-    default: '[{"name": "allow-ssh", "direction": "INGRESS", "priority": 1000, "sourceRanges": ["0.0.0.0/0"], "allowed": [{"protocol": "tcp", "ports": ["22"]}]}]'
+    value: '[{"name": "allow-ssh", "direction": "INGRESS", "priority": 1000, "sourceRanges": ["0.0.0.0/0"], "allowed": [{"protocol": "tcp", "ports": ["22"]}]}]'
