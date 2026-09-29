@@ -51,6 +51,16 @@ on:
         required: true
         type: string
         default: '[{"name": "allow-ssh", "direction": "INGRESS", "priority": 1000, "sourceRanges": ["0.0.0.0/0"], "allowed": [{"protocol": "tcp", "ports": ["22"]}]}]'
+      backend_type:
+        description: State backend (local, gcs, pulumi)
+        required: true
+        type: string
+        default: local
+      gcs_state_bucket:
+        description: GCS bucket for state (if backend_type=gcs)
+        required: false
+        type: string
+        default: ""
 
 env:
   PULUMI_STACK: virtual-machine-${{ github.event.inputs.region }}
@@ -65,17 +75,42 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.26'
-      - name: Setup Pulumi
+
+      - name: Install Pulumi CLI
         uses: pulumi/actions@v5
         with:
           command: version
+
+      - name: Configure Pulumi Backend
+        run: |
+          if [ "${{ github.event.inputs.backend_type }}" = "local" ]; then
+            pulumi login --local
+            echo "Using local filesystem backend"
+          elif [ "${{ github.event.inputs.backend_type }}" = "gcs" ]; then
+            if [ -z "${{ github.event.inputs.gcs_state_bucket }}" ]; then
+              echo "ERROR: gcs_state_bucket required for gcs backend"
+              exit 1
+            fi
+            pulumi login gs://${{ github.event.inputs.gcs_state_bucket }}
+            echo "Using GCS backend: gs://${{ github.event.inputs.gcs_state_bucket }}"
+          else
+            if [ -z "${{ secrets.PULUMI_ACCESS_TOKEN }}" ]; then
+              echo "ERROR: PULUMI_ACCESS_TOKEN required for Pulumi Cloud backend"
+              exit 1
+            fi
+            pulumi login --cloud-url https://api.pulumi.com
+            echo "Using Pulumi Cloud backend"
+          fi
+
       - name: Configure Pulumi Stack
         run: |
           pulumi stack select ${{ env.PULUMI_STACK }} 2>/dev/null || echo "Stack not found"
+
       - name: Set Pulumi Config
         run: |
           pulumi config set gcp:project ${{ github.event.inputs.project_id }}
@@ -88,21 +123,17 @@ jobs:
           pulumi config set vm:diskSizeGb ${{ github.event.inputs.disk_size_gb }}
           pulumi config set vm:diskType ${{ github.event.inputs.disk_type }}
           pulumi config set vm:firewallRules '${{ github.event.inputs.firewall_rules }}'
+
       - name: Download Go Dependencies
         run: go mod download
+
       - name: Go Build
         run: go build -v .
+
       - name: Pulumi Preview (Destroy)
-        uses: pulumi/actions@v5
-        with:
-          command: preview
-          stack-name: ${{ env.PULUMI_STACK }}
-          work-dir: .
-          args: --destroy
+        run: |
+          pulumi preview --stack ${{ env.PULUMI_STACK }} --destroy --yes
+
       - name: Pulumi Destroy
-        uses: pulumi/actions@v5
-        with:
-          command: destroy
-          stack-name: ${{ env.PULUMI_STACK }}
-          work-dir: .
-          args: --yes
+        run: |
+          pulumi destroy --stack ${{ env.PULUMI_STACK }} --yes
