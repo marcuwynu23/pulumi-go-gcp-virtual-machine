@@ -1,0 +1,107 @@
+name: CD - Pulumi GCP Virtual Machine (Apply)
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_id:
+        description: GCP project ID
+        required: true
+        type: string
+      region:
+        description: GCP region
+        required: true
+        type: string
+        default: us-central1
+      zone:
+        description: GCP zone
+        required: true
+        type: string
+        default: us-central1-a
+      instance_name:
+        description: VM instance name
+        required: true
+        type: string
+        default: free-tier-vm
+      machine_type:
+        description: VM machine type
+        required: true
+        type: string
+        default: e2-micro
+      ssh_user:
+        description: SSH username
+        required: true
+        type: string
+        default: gcp-user
+      ssh_public_key:
+        description: SSH public key content
+        required: true
+        type: string
+      disk_size_gb:
+        description: Boot disk size in GB
+        required: true
+        type: string
+        default: "30"
+      disk_type:
+        description: Boot disk type
+        required: true
+        type: string
+        default: pd-standard
+      firewall_rules:
+        description: Firewall rules (JSON)
+        required: true
+        type: string
+        default: '[{"name": "allow-ssh", "direction": "INGRESS", "priority": 1000, "sourceRanges": ["0.0.0.0/0"], "allowed": [{"protocol": "tcp", "ports": ["22"]}]}]'
+
+env:
+  PULUMI_STACK: virtual-machine-${{ github.event.inputs.region }}
+  PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+  GCP_PROJECT: ${{ github.event.inputs.project_id }}
+  GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+jobs:
+  apply:
+    name: Pulumi Up
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+      - name: Setup Pulumi
+        uses: pulumi/actions@v5
+        with:
+          command: version
+      - name: Configure Pulumi Stack
+        run: |
+          pulumi stack select ${{ env.PULUMI_STACK }} --create 2>/dev/null || pulumi stack init ${{ env.PULUMI_STACK }}
+      - name: Set Pulumi Config
+        run: |
+          pulumi config set gcp:project ${{ github.event.inputs.project_id }}
+          pulumi config set gcp:region ${{ github.event.inputs.region }}
+          pulumi config set gcp:zone ${{ github.event.inputs.zone }}
+          pulumi config set vm:instanceName ${{ github.event.inputs.instance_name }}
+          pulumi config set vm:machineType ${{ github.event.inputs.machine_type }}
+          pulumi config set vm:sshUser ${{ github.event.inputs.ssh_user }}
+          pulumi config set --secret vm:sshPublicKey "${{ github.event.inputs.ssh_public_key }}"
+          pulumi config set vm:diskSizeGb ${{ github.event.inputs.disk_size_gb }}
+          pulumi config set vm:diskType ${{ github.event.inputs.disk_type }}
+          pulumi config set vm:firewallRules '${{ github.event.inputs.firewall_rules }}'
+      - name: Download Go Dependencies
+        run: go mod download
+      - name: Go Build
+        run: go build -v .
+      - name: Pulumi Preview
+        uses: pulumi/actions@v5
+        with:
+          command: preview
+          stack-name: ${{ env.PULUMI_STACK }}
+          work-dir: .
+      - name: Pulumi Up
+        uses: pulumi/actions@v5
+        with:
+          command: up
+          stack-name: ${{ env.PULUMI_STACK }}
+          work-dir: .
+          args: --yes

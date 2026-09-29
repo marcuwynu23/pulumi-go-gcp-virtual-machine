@@ -1,0 +1,48 @@
+name: CI - Pulumi Validation
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate Pulumi Go Project
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Setup Pulumi
+        uses: pulumi/actions@v5
+        with:
+          command: 'version'
+
+      - name: Download Go Dependencies
+        run: go mod download
+
+      - name: Go Build
+        run: go build -v .
+
+      - name: Go Vet
+        run: go vet ./...
+
+      - name: Pulumi Preview (Dry Run)
+        uses: pulumi/actions@v5
+        with:
+          command: preview
+          stack-name: pr-${{ github.event.number }}
+          work-dir: .
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          PULUMI_SKIP_UPDATE_CHECK: 'true'
+          GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
